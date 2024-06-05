@@ -1,0 +1,34 @@
+Flu: Take pills 3 times a day, 5 days
+Sore throat: Spray throat with spray 6 times a day, 6 days
+Angine: Take antibiotics 3 times a day, 5 days
+Sepsis: Take a course of droppers and antibiotics, 15 days
+Radiculitis: Take anti-inflammatory drugs 2 times a day, 10 days
+Cirrhosis: Take antibiotics 3 times a day, 7 days
+Bronchitis: Take antibiotics 3 times a day, 6 days
+Asthma: Take a course of inhalations, 10 days
+Parasitic disease: Take antibiotics 3 times a day, 7 days
+Podagra: Diet, take antibiotics 3 times a day, 7 days
+Syphilis: Take antibiotics 3 times a day, 5 days
+Delirium tremens: Resuscitation therapy, 10 days
+Typhus: Stay in bed, take antibiotics 3 times a day, 20 days
+Cholera: Take a course of antibiotics, 15 days
+Haemorrhoids: Surgery, 5 days
+Dysentery: Take antibiotics 3 times a day, 10 days
+Cystitis: Take antibiotics 3 times a day, 15 days
+Tuberculosis: Aerosol therapy, 180 days
+Chickenpox: Take antipyretic drugs, 6 days
+Allergy: Take pills 4 times a day, 5 days
+Concussion: Take analgesics once a day, 5 days
+Brocken leg: Wear plaster cast, stay in bed, 60 days
+Bruised hand: Smear with ointment 2 times a day, 14 days
+Conjunctivitis: Drip eyes 3 times a day, 4 days
+Myopia: Wear glasses on a regular basis, 0 days
+Astigmatism: Wear glasses as needed, 0 days
+Cataract: Laser vision correction, 3 days
+Stomach upset: Take antibiotics 3 times a day, 7 days
+Diarrhea: Take pills 3 times a day, 6 days
+Intoxication: Take pills 3 times a day, 6 days
+Obesity: Diet, lead a healthy lifestyle, 30 days
+Heart failure: Surgical intervention, 7 days 
+Heart disease: Surgical intervention, 30 days
+Rickets: Take vitamin D 3 times a day, 30 days
