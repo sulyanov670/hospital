@@ -72,6 +72,127 @@ def start(account):
     print('Dial the menu number to work with the program'.center(104))
     return row, name
 
+def med_hist_header():
+    print('-'*104)
+    print('| {:<17}{:<21}{:<45}{:<17} | '.format('Date', 'Diagnosis', 'Treatment', 'Term of treatment'))
+    print('-'*104)
+
+def med_hist_body(row):
+    wb = xl.load_workbook(path + 'patients.xlsx')
+    sh = wb['Diagnosis']
+    for dg, dt, tr, ds in sh['B'+str(row):'E'+str(row)]:
+        dt = datetime.strftime(dt.value, '%d.%m.%Y')
+        print('| {:<17}{:<21}{:<45}{:<17} | '.format(dt, dg.value, tr.value, f'{ds.value} days'))
+        print('-'*104)
+
+def medical_history(name, string='', header='Medical history'): 
+    wb = xl.load_workbook(path + 'patients.xlsx')
+    sh = wb['Diagnosis']
+    names = []
+    for i in sh['A']:
+        if i.value == 'Name':
+            continue
+        if i.value not in names and i.value != None:
+            names.append(i.value)
+    if name not in names:
+        print(string.center(104))
+        return string
+    else:
+        first, second = True, True
+        for i in sh['A']:
+            if name == i.value:
+                if first:
+                    if header != '':
+                        print(header.center(104))
+                    med_hist_header()
+                    first = False
+                med_hist_body(i.row)
+
+def last_date(name):
+    wb = xl.load_workbook(path + 'patients.xlsx')
+    sh = wb['Diagnosis']
+    dates = [sh['C'+str(i.row)].value for i in sh['A'] if name != 'Name' and name != None and name == i.value]
+    last = max(dates)
+    for j in sh['C']:
+        if last == j.value and name == sh['A'+str(j.row)].value:
+            row = j.row
+    return last, row
+
+def last_record(name):
+    wb = xl.load_workbook(path + 'patients.xlsx')
+    sh = wb['Diagnosis']
+    try:
+        last, row = last_date(name)
+        dt = datetime.strftime(last, '%d.%m.%Y')
+        dg = sh['B'+str(row)].value
+        tr = sh['D'+str(row)].value
+        ds = sh['E'+str(row)].value
+        print('Last record'.center(104))
+        print('-'*104)
+        print('| {:<17}{:<21}{:<45}{:<17} | '.format('Date', 'Diagnoses', 'Treatment', 'Term of treatment'))
+        print('-'*104)
+        print('| {:<17}{:<21}{:<45}{:<17} | '.format(dt, dg, tr, f'{ds} days'))
+        print('-'*104)
+    except:
+        print('Your medical history is empty. It will be filled by your doctor'.center(104))
+
+def count_remainder(row, last):
+    wb = xl.load_workbook('patients.xlsx')
+    sh = wb['Diagnosis']
+    day =  sh['E'+str(row)].value
+    delta = datetime.now() - last
+    remainder = int(day) - delta.days
+    return remainder, day
+
+def treatment(name):
+    wb = xl.load_workbook(path + 'patients.xlsx')
+    sh = wb['Diagnosis']
+    try:
+        last, row = last_date(name)
+        remainder, day = count_remainder(row, last)
+        if remainder > 0:
+            print(f"The treatment duration - {day} days, {remainder} days left until the end".center(104))
+        else:
+            print(f"You have no treatment at the moment".center(104))
+    except:
+        print('Your medical history is empty'.center(104))
+
+def schedule(): 
+    wb = xl.load_workbook(path + 'doctors.xlsx')
+    sh = wb['Schedule']
+    print('Doctors schedule'.center(104))
+    header = [sh.cell(row=1, column=i).value for i in range(1, 7)]
+    table = PrettyTable(header)
+    for a, b, c, d, e, f in sh['A2':'F10']:
+        if a.value == None:
+            a.value = ''
+        values = [a.value, b.value, c.value, d.value, e.value, f.value]
+        if values == [''] + [None for i in range(5)]:
+            values = [''] + ['' for i in range(5)]
+        table.add_row(values)
+    print(table)
+
+def patient_info(row, string, whose, header):
+    wb = xl.load_workbook(path + 'patients.xlsx')
+    sh = wb['Logins']
+    info = [sh.cell(row=row, column=i).value for i in range(4, 8)]
+    try:
+        info[2] = info[2].strftime('%d.%m.%Y')
+        print(header.center(104))
+        table = PrettyTable(['Height', 'Weight', 'Birthday date', 'Blood group'])
+        table.add_row(['{:^20}'.format(info[0]), '{:^20}'.format(info[1]), '{:^30}'.format(info[2]), '{:^30}'.format(info[3])])
+        print(table)
+    except:
+        print(string.center(104))
+        hgt = float(input(f'Enter {whose} height: >>> '))
+        wgt = float(input(f'Enter {whose} weight: >>> '))
+        bth = input(f'Enter {whose} birthdate: >>> ')
+        bth = datetime.strptime(bth, '%d.%m.%Y').date()
+        bld = input(f'Enter {whose} bloodgroupe: >>> ')
+        for h, w, bd, bg in sh['D'+str(row):'G'+str(row)]:
+            h.value, w.value, bd.value, bg.value = hgt, wgt, bth, bld
+        wb.save('patients.xlsx')
+        patient_info(row, string, whose, header)
 
 def patient():
     row, name = start('patients.xlsx')
@@ -82,7 +203,27 @@ def patient():
     5 - show my info
     6 - return to the main menu
     7 - exit''')
-
+    while True:
+        number = input('>>> ')
+        if number == '1':
+            s = 'Your medical history is empty. It will be filled by your doctor'
+            medical_history(name, s)
+        elif number == '2':
+            last_record(name)
+        elif number == '3':
+            treatment(name)
+        elif number == '4':
+            schedule()
+        elif number == '5':
+            s = 'Your date is not yet in the system. Please fill in info about yourself'
+            patient_info(row, s, 'your', 'My info')
+        elif number == '6':
+            break
+        elif number == '7':
+            print(number)
+            exit('The program is over, we look forward to your return!'.center(104))
+        else:
+            print('Such command does not exists'.center(104))
 
 def medassistant():
     row, name = start('medassistants.xlsx')
