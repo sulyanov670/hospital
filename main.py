@@ -805,6 +805,223 @@ def doctor():
         else:
             print('Such command does not exists'.center(104))
 
+def employee_list(user):
+    wb = xl.load_workbook(path + user)
+    sh = wb['Logins']
+    line = '-' * 98
+    print(line.center(110))
+    print('|  {:^3} | {:<25}| {:<20} | {:<20} | {:<15}|'.center(55).format('№', 'Name', 'Position', 'Date of emloyment', 'Salary'))
+    print(line.center(110))
+    с = 1
+    for nm, ps, dt, sl in zip(sh['A'], sh['D'], sh['F'], sh['E']):
+        if nm.value != None and nm.value != 'Name':
+            try:
+                dt = datetime.strftime(dt.value, '%d.%m.%Y')
+                print('|  {:^3} | {:<25}| {:<20} | {:<20} | {:<15}|'.center(55).format(с, nm.value, ps.value, dt, f'{sl.value} $'))
+            except:
+                s = 'no data'
+                print('|  {:^3} | {:<25}| {:<20} | {:<20} | {:<15}|'.center(55).format(с, nm.value, s, s, s))
+            print(line.center(110))
+            с += 1
+
+def fill_info(user, r):
+    wb = xl.load_workbook(path + user)
+    sh = wb['Logins']
+    sh['D'+str(r)].value = input('Enter a position: >>> ').strip()
+    sh['E'+str(r)].value = int(input('Enter a salary: >>> '))
+    date = input('Enter the date of employment: >>> ').strip()
+    date = datetime.strptime(date, '%d.%m.%Y') 
+    sh['F'+str(r)].value = date          
+    wb.save(user)
+
+def result(user, r):
+    wb = xl.load_workbook(path + user)
+    sh = wb['Logins']
+    name = sh['A'+str(r)].value
+    position = sh['D'+str(r)].value
+    date = sh['F'+str(r)].value
+    date = datetime.strftime(date, '%d.%m.%Y')
+    salary = sh['E'+str(r)].value
+    c = 0
+    for nm in sh['A']:
+            if nm.value != None and nm.value != 'Name':
+                c += 1
+                if nm.value == name:
+                    line = '-' * 98
+                    print(line.center(110))
+                    print('|  {:^3} | {:<25}| {:<20} | {:<20} | {:<15}|'.center(55).format(c, name, position, date, f'{salary} $'))
+                    print(line.center(110))
+
+def edit_data(user):
+    wb = xl.load_workbook(path + user)
+    sh = wb['Logins']
+    med = input('Whose data do you want to edit? >>> ').strip()
+    for i in sh['A']:
+        if med == i.value:
+            if sh['D'+str(i.row)].value == None:
+                print('This is a new employee. Please fill in info about him/her'.center(104))
+                fill_info(user, i.row)
+                return i.row
+            else:
+                print('What kind of data in the table do you want to edit?'.center(104))
+                data = input('Type (position/salary) >>> ').strip()
+                if data == 'position': 
+                    ps = input(f'Enter a new position >>> ').strip()
+                    sh['D'+str(i.row)].value = ps
+                elif data == 'salary':
+                    sl = input(f'Enter a new salary >>> ').strip()
+                    sh['E'+str(i.row)].value = int(sl)
+                else:
+                    print('Wrong command'.center(104))
+                wb.save(user)
+                return i.row      
+    else:
+        return 'No such employee'
+
+def create_acc(user):
+    wb = xl.load_workbook(path + user)
+    sh = wb['Logins']
+    name = input('Enter a name and a surname: >>> ').strip()
+    for i in sh['A']:
+        if name == i.value:
+            print('Such account already exists'.center(104))
+            break
+    else:
+        login = input('Create a login: >>> ')
+        password = input('Create a password: >>> ')    
+        c = 1
+        while sh.cell(row=c, column=1).value != None:
+            c += 1
+        for nm, lg, pw in sh['A'+str(c):'C'+str(c)]:
+            nm.value, lg.value, pw.value = name, login, password
+        wb.save(user)
+        print('You successfully created the account'.center(104))
+
+def delete_acc(user):
+    wb = xl.load_workbook(path + user)
+    sh = wb['Logins']
+    emp = input('Whose account do you want to delete: >>> ').strip()
+    for i in sh['A']:
+        if emp == i.value:
+            print('This account will be deleted'.center(104))
+            ask = input('Continue? (y/n) >>> ')
+            if ask == 'y':
+                sh.delete_rows(i.row)
+                print('The account was deleted'.center(104))
+                wb.save(user)
+                employee_list(user)
+            else:
+                print('The deletion was canceled'.center(104))
+            break
+    else:
+        print('No such employee'.center(104))
+
+def employee_menu(file):
+    print('1 - edit data, 2 - create account, 3 - delete account, 4 - go back'.center(104))
+    while True:
+        option = input('Type (1/2/3/4) >>> ')
+        if option == '1':
+            r = edit_data(file)
+            if r == 'No such employee':
+                print(r.center(104))
+            else:
+                result(file, r)
+        elif option == '2':
+            create_acc(file)
+        elif option == '3':
+            delete_acc(file)
+        elif option == '4':
+            break
+        else:
+            print('Wrong command'.center(104))
+
+def max_salary(file):
+    wb = xl.load_workbook(file)
+    sh = wb['Logins']
+    maxx = -1
+    for nm, sl, ps in zip(sh['A'], sh['E'], sh['D']):
+        if (nm.value != None and sl.value == None) or (sl.value == 'Salary' or sl.value == None):
+            continue
+        if sl.value > maxx:
+            maxx = sl.value
+            name = nm.value
+            position = ps.value
+    return maxx, name, position
+
+def min_salary(file):
+    wb = xl.load_workbook(file)
+    sh = wb['Logins']
+    minn = 999999
+    for nm, sl, ps in zip(sh['A'], sh['E'], sh['D']):
+        if (nm.value != None and sl.value == None) or (sl.value == 'Salary' or sl.value == None):
+            continue
+        if sl.value < minn:
+            minn = sl.value
+            name = nm.value
+            position = ps.value
+    return minn, name, position
+
+def table(who, type, name, position, salary):
+    print(f'The {who} with the {type} salary'.center(104))
+    line = '-' * 78
+    print(line.center(105))
+    print('| {:<30}| {:<25}| {:<15} |'.center(53).format('Name', 'Position', 'Salary'))
+    print(line.center(105))
+    print('| {:<30}| {:<25}| {:<15} |'.center(53).format(name, position, salary))
+    print(line.center(105))
+
+def highest_salary():
+    wb1 = xl.load_workbook('medassistants.xlsx')
+    wb2 = xl.load_workbook('doctors.xlsx')
+    sh1, sh2 = wb1['Logins'], wb2['Logins']
+    print('Whose the highest salary do you want to see?'.center(104))
+    print('1 - medassistant, 2 - doctor, 3 - general, 4 - go back'.center(104))
+    while True:
+        option = input('Type (1/2/3/4) >>> ').strip()
+        med_max, med_nm, med_pos = max_salary('medassistants.xlsx')
+        doc_max, doc_nm, doc_pos = max_salary('doctors.xlsx')
+        if option == '1':
+            table('medassistant', 'highest', med_nm, med_pos, f'{med_max} $')
+        elif option == '2':
+            table('doctor', 'highest', doc_nm, doc_pos, f'{doc_max} $')
+        elif option == '3':
+            if med_max > doc_max:
+                table('employee', 'highest', med_nm, med_pos, f'{med_max} $')
+            elif med_max < doc_max:
+                table('employee', 'highest', doc_nm, doc_pos, f'{doc_max} $')
+            else:
+                table('employee', 'highest', doc_nm, doc_pos, f'{doc_max} $')
+        elif option == '4':
+            break
+        else:
+            print('Wrong command'.center(104))
+
+def lowest_salary():
+    wb1 = xl.load_workbook('medassistants.xlsx')
+    wb2 = xl.load_workbook('doctors.xlsx')
+    sh1, sh2 = wb1['Logins'], wb2['Logins']
+    print('Whose the lowest salary do you want to see?'.center(104))
+    print('1 - medassistant, 2 - doctor, 3 - general, 4 - go back'.center(104))
+    while True:
+        option = input('Type (1/2/3/4) >>> ').strip()
+        med_min, med_nm, med_pos = min_salary('medassistants.xlsx')
+        doc_min, doc_nm, doc_pos = min_salary('doctors.xlsx')
+        if option == '1':
+            table('medassistant', 'lowest', med_nm, med_pos, f'{med_min} $')
+        elif option == '2':
+            table('doctor', 'lowest', doc_nm, doc_pos, f'{doc_min} $')
+        elif option == '3':
+            if med_min < doc_min:
+                table('employee', 'lowest', med_nm, med_pos, f'{med_min} $')
+            elif med_min > doc_min:
+                table('employee', 'lowest', doc_nm, doc_pos, f'{doc_min} $')
+            else:
+                table('employee', 'lowest', doc_nm, doc_pos, f'{doc_min} $')
+        elif option == '4':
+            break
+        else:
+            print('Wrong command'.center(104))
+
 def maindoctor():
     row, name = start('maindoctors.xlsx')
     print('''    1 - show the list of medassistances
@@ -814,7 +1031,28 @@ def maindoctor():
     5 - show the employee with the lowest salary
     6 - return to the main menu
     7 - exit''')
-
+    while True:
+        number = input('>>> ')
+        if number == '1':
+            print('The list of medassistants'.center(104))
+            employee_list('medassistants.xlsx')
+            employee_menu('medassistants.xlsx')
+        elif number == '2':
+            print('The list of doctors'.center(104))
+            employee_list('doctors.xlsx')
+            employee_menu('doctors.xlsx')
+        elif number == '3':
+            patients_quantity()
+        elif number == '4':
+            highest_salary()
+        elif number == '5':
+            lowest_salary()
+        elif number == '6':
+            break
+        elif number == '7':
+            exit('The program is over, we look forward to your return!'.center(104))
+        else:
+            print('Such command does not exists'.center(104))
 
 commands = {
     'patient': patient,
