@@ -225,6 +225,171 @@ def patient():
         else:
             print('Such command does not exists'.center(104))
 
+def find_procedures(name, date):
+    wb = xl.load_workbook(path + 'patients2.xlsx')
+    sh = wb['Diagnosis']
+    procedures = []
+    for pr, start, end, days, time, med in sh['F2': 'K'+str(sh.max_row)]:
+        if pr.value != None:
+            if name == med.value:
+                start, end = start.value.date(), end.value.date()
+                if start <= date <= end:
+                    days = days.value.split(', ')
+                    day = calendar.day_name[date.weekday()]
+                    if day in days:
+                        patient_name = sh['A'+str(pr.row)].value
+                        time = datetime.strftime(time.value, '%H:%M')
+                        procedures.append((patient_name, pr.value, time))
+    return procedures
+
+def header(dt, day):
+    print(f"Schedule of procedures {dt}".center(104))
+    line = '-' * 76
+    print(line.center(105))
+    print('|{:^74}|'.center(38).format(day))
+    print(line.center(105))
+    print('| {:^3} | {:^10} | {:^25} | {:^25} |'.center(65).format('№', 'Time', 'Name', 'Procedure'))
+    print(line.center(105))
+
+def body(c, time, name, procedure):
+    line = '-' * 76
+    print('| {:^3} | {:^10} | {:^25} | {:^25} |'.center(65).format(c, time, name, procedure))
+    print(line.center(105))
+
+def procedures_table(name, dt, dt_obj):
+    records = find_procedures(name, dt_obj)
+    records.sort(key=lambda x: x[2])
+    day = calendar.day_name[dt_obj.weekday()]
+    header(dt, day)
+    c = 1
+    for record in records:
+        name, procedure, time = record
+        body(c, time, name, procedure) 
+        c += 1
+
+def procedures(name):
+    wb = xl.load_workbook(path + 'patients2.xlsx')
+    sh = wb['Diagnosis']
+    print('For when do you want to see a schedule of procedures?'.center(104))
+    print('1 - today, 2 - tomorrow, 3 - other date, 4 - go back'.center(104))
+    while True:
+        dt = input('Type (1/2/3/4) >>> ').strip()
+        if dt == '1':
+            today = date.today()
+            today_str = datetime.strftime(today, '%d.%m.%Y')
+            procedures_table(name, today_str, today)
+        elif dt == '2':
+            tomorrow = date.today()+timedelta(days=1)
+            tomorrow_str = datetime.strftime(tomorrow, '%d.%m.%Y')
+            procedures_table(name, tomorrow_str, tomorrow)
+        elif dt == '3':
+            dt = input('(dd.mm.yyyy) >>> ').strip()
+            dt_obj = datetime.strptime(dt, '%d.%m.%Y').date()
+            procedures_table(name, dt, dt_obj)
+        elif dt == '4':
+            break
+        else:
+            print('Wrong command'.center(104))
+
+def write_errand(sheet, name, errand, dt):
+    wb = xl.load_workbook(path+'errands.xlsx')
+    sh = wb[sheet]
+    if sheet == 'Executed':
+        date = input(f'Type the date of executing: >>> ')
+        date = datetime.strptime(date, '%d.%m.%Y')
+    else:
+        date = dt
+    r = sh['D1'].value
+    for dt, er, md in sh['A'+str(r+1): 'C'+str(r+1)]:
+        dt.value, er.value, md.value = date, errand, name
+        sh['D1'].value += 1
+    wb.save('errands.xlsx')
+    if sheet == 'Executed':
+        print('The list of executed errands'.center(104))
+    errands_table('Executed', 'By')
+
+def check_errand(name, string):
+    wb = xl.load_workbook(path+'errands.xlsx')
+    sh = wb['Appointed']
+    errand = input(string).strip()
+    for i, j in zip(sh['B'], sh['C']):
+        if errand == i.value and name == j.value:
+            break
+    else:
+        while errand != i.value or name != j.value:
+            print("You don't have such errand, try again".center(104))
+            errand = input(string).strip()
+            for i, j in zip(sh['B'], sh['C']):
+                if errand == i.value and name == j.value:
+                    break
+    return errand, i.row, sh['A'+str(i.row)].value
+
+def count_errands(name):
+    wb = xl.load_workbook(path+'errands.xlsx')
+    sh = wb['Appointed']
+    counter = 0
+    for medass in sh['C']:
+        if name == medass.value:
+            counter += 1
+    return counter
+
+def execute_errand(name):
+    wb = xl.load_workbook(path+'errands.xlsx')
+    sh = wb['Appointed']
+    counter = count_errands(name)
+    if counter > 0:
+        print(f'You have {counter} errand(-s)'.center(104))
+        answer = input('Do you want to execute it/them? (y/n) >>> ').strip()
+        if answer == 'y':
+            string = 'Type an errand you wanna execute: >>> '
+            errand, row, date = check_errand(name, string)
+            sh.delete_rows(row)
+            sh['D1'].value -= 1
+            wb.save('errands.xlsx')
+            write_errand('Executed', name, errand, date)
+            medass_errands_menu(name, errand, date)
+    else:
+        print('You have no errands at the moment'.center(104))
+
+def cancel_execution(name, errand, date):
+    wb = xl.load_workbook(path+'errands.xlsx')
+    sh = wb['Executed']
+    for i in sh['B']:
+        if errand == i.value:
+            sh.delete_rows(i.row)
+            sh['D1'].value -= 1
+            wb.save('errands.xlsx')
+            print('The execution has been cancelled'.center(104))
+            write_errand('Appointed', name, errand, date)
+        
+def edit_date(sheet, errand):
+    wb = xl.load_workbook(path+'errands.xlsx')
+    sh = wb[sheet]
+    for i in sh['B']:
+        if errand == i.value:
+            date = input('Type a new date: >>> ').strip()
+            date = datetime.strptime(date, '%d.%m.%Y')
+            sh['A'+str(i.row)].value = date
+            wb.save('errands.xlsx')
+            print('The date has been edited'.center(104))
+            show_certain_errand(sheet, errand)
+
+def medass_errands_menu(name, errand, date):
+    print('1 - edit date of executing, 2 - cancel execution, 3 - go back'.center(104))
+    while True:
+        option = input('Type (1/2/3) >>> ').strip()
+        if option == '1':
+            edit_date('Executed', errand)
+        elif option == '2':
+            print("Do you want to cancel the execution of the errand you've just typed?".center(104))
+            if input('(y/n) >>> ').strip() == 'y':
+                cancel_execution(name, errand, date)
+                break
+        elif option == '3':
+            break
+        else:
+            print('Wrong command'.center(104))
+
 def medassistant():
     row, name = start('medassistants.xlsx')
     print('''    1 - show a list of procedures
@@ -234,7 +399,29 @@ def medassistant():
     5 - show executed errands
     6 - return to the main menu
     7 - exit''')
-
+    while True:
+        number = input('>>> ')
+        if number == '1':
+            procedures(name)
+        elif number == '2':
+            patient = input("Type a patient's name: >>> ")
+            r = find_patient(patient)
+            if r == 'No results':
+                print(r.center(104))
+        elif number == '3':
+            print('The list of appointed errands'.center(104))
+            errands_table('Appointed', 'For')
+        elif number == '4':
+            execute_errand(name)
+        elif number == '5':
+            print('The list of executed errands'.center(104))
+            errands_table('Executed', 'By')
+        elif number == '6':
+            break
+        elif number == '7':
+            exit('The program is over, we look forward to your return!'.center(104))
+        else:
+            print('Such command does not exists'.center(104))
 
 def doctor():
     row, name = start('doctors.xlsx')
