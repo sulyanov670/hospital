@@ -423,6 +423,348 @@ def medassistant():
         else:
             print('Such command does not exists'.center(104))
 
+def patients_receiving_treatment():
+    wb = xl.load_workbook(path + 'patients.xlsx')
+    sh = wb['Logins']
+    print('The list of patients receiving treatment'.center(104))
+    line = '-'*49
+    print(line.center(104))
+    print('| {:<25}{:<10}{:>10} |'.center(75).format('Names', 'Days', 'Left'))
+    print(line.center(104))
+    for j in sh['A']:
+        try: 
+            last, row = last_date(j.value)
+            remainder, day = count_remainder(row, last)
+        except:
+            continue
+        if remainder > 0:
+            print('| {:<25}{:<10}{:>10} |'.center(75).format(j.value, day, remainder))
+    print(line.center(104))
+
+def patients_quantity():
+    wb = xl.load_workbook(path + 'patients.xlsx')
+    sh = wb['Logins']
+    c = 1
+    while sh.cell(row=c, column=1).value!=None:
+        c+=1
+    print('Total number of patients'.center(104))
+    print('+------+'.center(104))
+    print(f' |  {c-2}  |'.center(104))
+    print('+------+'.center(104))
+
+def delete_errand(sheet):
+    wb = xl.load_workbook(path+'errands.xlsx')
+    sh = wb[sheet]
+    errand = input('Type an errand you wanna delete: >>> ').strip()
+    for i in sh['B']:
+        if errand == i.value:
+            sh.delete_rows(i.row)
+            sh['D1'].value -= 1 
+            wb.save('errands.xlsx')
+            print('The errand has been removed'.center(104))
+            if sheet == 'Appointed':
+                errands_table(sheet, 'For')
+            else:
+                errands_table(sheet, 'By')
+            break
+    else:
+        print('No such errand'.center(104))
+
+def show_certain_errand(sheet, errand):
+    wb = xl.load_workbook(path+'errands.xlsx')
+    sh = wb[sheet]
+    line = '-'*104
+    print(line.center(110))
+    c = 0
+    for dt, er, medass in sh['A2': 'C'+str(sh.max_row)]:
+        if dt.value != None and dt.value != 'Date':
+            dt = datetime.strftime(dt.value, '%d.%m.%Y')
+            c += 1
+            if er.value == errand:
+                print('|  {:<3} |  {:<19} |  {:<45} |  {:<20} |'.center(45).format(c, dt, er.value, medass.value))
+    print(line.center(110))
+
+def edit_errand(sheet):
+    wb = xl.load_workbook(path+'errands.xlsx')
+    sh = wb[sheet]
+    errand_is_changed = False
+    errand = input('Type an errand you wanna edit: >>> ').strip()
+    for i in sh['B']:
+        if errand == i.value:
+            print('What do you want to edit?'.center(104))
+            print(f'1 - date, 2 - errand, 3 - name of medassistant, 4 - go back'.center(104))
+            while True:
+                option = input('(1/2/3/4) >>> ').strip()
+                if option == '1':
+                    date = input('Type a new date: >>> ').strip()
+                    sh['A'+str(i.row)].value = datetime.strptime(date, '%d.%m.%Y')
+                    wb.save('errands.xlsx')
+                    print('The date has been edited'.center(104))
+                    if errand_is_changed:
+                        show_certain_errand(sheet, new_errand)
+                    else:
+                        show_certain_errand(sheet, errand)
+                elif option == '2':
+                    new_errand = input('Type a new errand: >>> ').strip()
+                    sh['B'+str(i.row)].value = new_errand
+                    wb.save('errands.xlsx')
+                    errand_is_changed = True
+                    print('The errand has been edited'.center(104))
+                    show_certain_errand(sheet, new_errand)
+                elif option == '3':
+                    name = check_name('Type a new name: >>> ').strip()
+                    sh['C'+str(i.row)].value = name
+                    wb.save('errands.xlsx')
+                    print('The name has been edited'.center(104))
+                    if errand_is_changed:
+                        show_certain_errand(sheet, new_errand)
+                    else:
+                        show_certain_errand(sheet, errand)
+                elif option == '4':
+                    break
+                else:
+                    print('Wrong command'.center(104))
+
+def errands_table(sheet, preposition):
+    wb = xl.load_workbook(path+'errands.xlsx')
+    sh = wb[sheet]
+    line = '-'*104
+    print(line.center(110))
+    if sheet == 'Appointed':
+        print('|  {:<3} |  {:<19} |  {:<45} |  {:<20} |'.center(45).format('№', 'Date of appointing', f'{sheet} errands', f'{preposition} whom'))
+    else:
+        print('|  {:<3} |  {:<19} |  {:<45} |  {:<20} |'.center(45).format('№', 'Date of executing', f'{sheet} errands', f'{preposition} whom'))
+    print(line.center(110))
+    c = 1
+    for dt, er, medass in sh['A2': 'C'+str(sh.max_row)]:
+        if dt.value != None and dt.value != 'Date':
+            dt = datetime.strftime(dt.value, '%d.%m.%Y')
+            print('|  {:<3} |  {:<19} |  {:<45} |  {:<20} |'.center(45).format(c, dt, er.value, medass.value))
+            c += 1
+    print(line.center(110))
+
+def check_name(string):
+    wb2 = xl.load_workbook(path+'medassistants.xlsx')
+    sh2 = wb2['Logins']
+    medass = input(string).strip()
+    for i in sh2['A']:
+        if medass == i.value:
+            break
+    else:
+        while medass != i.value:
+            print('No such medassistant, try again'.center(104))
+            medass = input(string).strip()
+            for i in sh2['A']:
+                if medass == i.value:
+                    break
+    return medass 
+
+def appoint_errand():
+    wb = xl.load_workbook(path+'errands.xlsx')
+    sh = wb['Appointed']
+    errand = input('Type an errand: >>> ').strip()
+    date = input(f'Type the date of appointing: >>> ')
+    date = datetime.strptime(date, '%d.%m.%Y')
+    medass = check_name('For whom: >>> ')
+    r = sh['D1'].value
+    for dt, er, md in sh['A'+str(r+1): 'C'+str(r+1)]:
+        dt.value, er.value, md.value = date, errand, medass
+        sh['D1'].value += 1
+    wb.save('errands.xlsx')
+    print(f'The list of appointed errands'.center(104))
+    errands_table('Appointed', 'For')
+
+def errands_menu(file):
+    print('1 - edit an errand, 2 - remove an errand, 3 - go back'.center(104))
+    while True:
+        option = input('Type (1/2/3) >>> ')
+        if option == '1':
+            edit_errand(file)
+        elif option == '2':
+            delete_errand(file)
+        elif option == '3':
+            break
+        else:
+            print('Wrong command'.center(104))
+
+def find_patient(name):
+    wb = xl.load_workbook(path + 'patients.xlsx')
+    sh1 = wb['Logins']
+    sh2 = wb['Diagnosis']
+    for i in sh1['A']:
+        if name == i.value:
+            try:
+                last, row = last_date(name)
+                dt = datetime.strftime(last, '%d.%m.%Y')
+                dg = sh2['B'+str(row)].value
+                line = '-'*71
+                print(line.center(111))
+                print('| {:^20}|{:^20}|{:^25} | '.center(65).format(name, dt, dg))
+                print(line.center(111))
+            except:
+                line = '-'*70
+                print(line.center(111))
+                print('| {:^20}|{:^45} | '.center(60).format(name, 'any diagnosis'))
+                print(line.center(111))
+            return i.row
+    else:
+        return 'No results'
+
+def searching():
+    patient = input("Type a patient's name: >>> ")
+    r = find_patient(patient)
+    if r == 'No results':
+        print(r.center(104))
+    else:
+        print("1 - patient's info, 2 - medical history, 3 - go back".center(104))
+        while True:
+            n = input('Type (1/2/3) >>> ')
+            if n == '1':
+                s1 = f"{patient}'s data is not yet in the system. Please fill in info about him/her".center(104)
+                patient_info(r, s1, "patient's", f"{patient}'s info")
+            elif n == '2':
+                s2 = f"{patient}'s medical history is empty. Would you like to fill in it?".center(104)
+                result = medical_history(patient, s2, f"{patient}'s medical history")
+                if result == s2:
+                    if input('(y/n) >>> ') == 'y':
+                        write_diagnosis(patient)
+                else:
+                    med_hist_menu(patient)
+            elif n == '3':
+                break
+            else:
+                print('Wrong command'.center(104))
+
+def maxx_row():
+    wb = xl.load_workbook(path + 'patients.xlsx')
+    sh = wb['Diagnosis']
+    c = 1
+    while sh.cell(row=c, column=1).value!=None:
+        c+=1
+    return c
+
+def write_diagnosis(name):
+    wb = xl.load_workbook('patients.xlsx')
+    sh = wb['Diagnosis']
+    dg = input('Enter a diagnosis for the patient: >>> ').capitalize()
+    f = open('diagnosis.txt')
+    for i in f:
+        diagnosis, treatment = i.split(': ')
+        if diagnosis == dg:
+            dt = input('Enter the date of diagnosing: >>> ')
+            dt = datetime.strptime(dt, '%d.%m.%Y')
+            prescription, term = treatment.split(', ')
+            num, word = term.split(' ')
+            row = maxx_row()
+            for a, b, c, d, e in sh['A'+str(row): 'E'+str(row)]:
+                a.value, b.value, c.value, d.value, e.value = name, dg, dt, prescription, int(num)
+                wb.save('patients.xlsx')
+                medical_history(name, header=f"{name}'s medical history")
+                med_hist_menu(name)
+            break
+    else:
+        print('No such diagnosis'.center(104))
+        
+def diagnose(name):
+    wb = xl.load_workbook(path + 'patients.xlsx')
+    sh = wb['Logins']
+    for i in sh['A']:
+        if name == i.value:
+            try:
+                last, row = last_date(name)
+                remainder, day = count_remainder(row, last)
+                if remainder > 0:
+                    print('The patient is already receiving treatment'.center(104))
+                    med_hist_menu(name)
+                else:
+                    write_diagnosis(name)                
+            except:
+                write_diagnosis(name)
+            break
+    else:
+        print('There is no such patient'.center(104))   
+
+def new_diagnosis(row):
+    wb = xl.load_workbook('patients.xlsx')
+    sh = wb['Diagnosis']
+    dg = input('Enter a new diagnosis: >>> ').capitalize().strip()
+    f = open('diagnosis.txt')
+    for i in f:
+        diagnosis, treatment = i.split(': ')
+        if diagnosis == dg:
+            prescription, term = treatment.split(', ')
+            num, word = term.split(' ')
+            sh['B'+str(row)].value, sh['D'+str(row)].value, sh['E'+str(row)].value  = dg, prescription, int(num)
+            wb.save('patients.xlsx')
+            print('The diagnosis has been edited'.center(104))
+            break
+    else:
+        print('No such diagnosis'.center(104))
+
+def edit_diagnosis(name):
+    wb = xl.load_workbook('patients.xlsx')
+    sh = wb['Diagnosis']
+    print('Which record do you want to edit?'.center(104))
+    record = input('Input date: >>> ').strip()
+    record = datetime.strptime(record, '%d.%m.%Y')
+    for i, j in zip(sh['A'], sh['C']):
+        if name == i.value and record == j.value:
+            print('Which data?'.center(104))
+            print('1 - diagnosis, 2 - date of diagnosing, 3 - treatment, 4 - term of treatment'.center(104))
+            data = input('(1/2/3/4) >>> ').strip()
+            if data == '1':
+                new_diagnosis(i.row)
+            elif data == '2':
+                dt = input('Enter a new date: >>> ').strip()
+                dt = datetime.strptime(dt, '%d.%m.%Y')
+                sh['C'+str(i.row)] = dt
+                wb.save('patients.xlsx')
+                print('The date has been edited'.center(104))
+            elif data == '3':
+                sh['D'+str(i.row)] = input('Enter a new treatment: >>> ').strip()
+                wb.save('patients.xlsx')
+                print('The treatment has been edited'.center(104))
+            elif data == '4':
+                sh['E'+str(i.row)] = int(input('Enter a new term of treatment: >>> '))
+                wb.save('patients.xlsx')
+                print('The term of treatment has been edited'.center(104))
+            medical_history(name, header='')
+            break
+    else:
+        print('No such record'.center(104))
+
+def delete_diagnosis(name):
+    wb = xl.load_workbook('patients.xlsx')
+    sh = wb['Diagnosis']
+    print('Which record do you want to delete?'.center(104))
+    record = input('Input date: >>> ').strip()
+    record = datetime.strptime(record, '%d.%m.%Y')
+    for i, j in zip(sh['A'], sh['C']):
+        if name == i.value and record == j.value:
+            print('This record would be deleted'.center(104))
+            if input('Continue? (y/n) >>> ') == 'y':
+                sh.delete_rows(i.row)
+                wb.save('patients.xlsx')
+                print('The record has been deleted'.center(104))
+                s = f"{name}'s medical history is empty".center(104)
+                medical_history(name, s, '')
+            break
+    else:
+        print('No such record'.center(104))
+
+def med_hist_menu(name):
+    print('1 - edit diagnosis, 2 - delete diagnosis, 3 - go back'.center(104))
+    while True:
+        option = input('(1/2/3) >>> ')
+        if option == '1':
+            edit_diagnosis(name)
+        elif option == '2':
+            delete_diagnosis(name)
+        elif option == '3':
+            break
+        else:
+            print('Wrong command'.center(104))
+
 def doctor():
     row, name = start('doctors.xlsx')
     print('''    1 - show a list of patients receiving treatment
@@ -434,7 +776,34 @@ def doctor():
     7 - diagnose a patient
     8 - return to the main menu
     9 - exit''')
-
+    while True:
+        number = input('>>> ')
+        if number == '1':
+            patients_receiving_treatment()
+        elif number == '2':
+            patients_quantity()
+        elif number == '3': 
+            print('The list of appointed errands'.center(104))
+            errands_table('Appointed', 'For')
+            errands_menu('Appointed')
+        elif number == '4':
+            appoint_errand()
+            errands_menu('Appointed')
+        elif number == '5': 
+            print('The list of executed errands'.center(104))
+            errands_table('Executed', 'By')
+            errands_menu('Executed')
+        elif number == '6':
+            searching()
+        elif number == '7':
+            patient = input("Type a patient's name: >>> ").strip()
+            diagnose(patient)
+        elif number == '8':
+            break
+        elif number == '9':
+            exit('The program is over, we look forward to your return!'.center(104))
+        else:
+            print('Such command does not exists'.center(104))
 
 def maindoctor():
     row, name = start('maindoctors.xlsx')
